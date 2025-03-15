@@ -1061,10 +1061,10 @@ while jogando:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 menu_pausa()
-            if not game_over and event.key == pygame.K_SPACE:
-                jogador.pular()
-            elif not game_over and event.key == pygame.K_a:
-                jogador.atacar()
+            if not game_over and not jogador.morrendo and event.key == pygame.K_SPACE:
+                 jogador.pular()
+            elif not game_over and not jogador.morrendo and event.key == pygame.K_a:
+                 jogador.atacar()
 
     if not game_over:
         todos_sprites.update()
