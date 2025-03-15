@@ -151,14 +151,27 @@ def menu_principal():
     while True:
         tela.blit(fundo_menu, (0, 0))
 
-        fonte_opcao = pygame.font.SysFont("Arial", 110)
-        opcao1 = fonte_opcao.render("1 - Iniciar Jogo", True, VERDE)
-        opcao2 = fonte_opcao.render("2 - Ajuda", True, VERDE)
-        opcao3 = fonte_opcao.render("3 - Sair do Jogo", True, VERMELHO)
+        fonte_titulo = pygame.font.Font(caminho_fonte, 40)
+        fonte_opcao = pygame.font.Font(caminho_fonte, 30)
 
-        tela.blit(opcao1, (50, ALTURA - 200))
-        tela.blit(opcao2, (50, ALTURA - 140))
-        tela.blit(opcao3, (50, ALTURA - 80))
+        titulo = fonte_titulo.render("Esqueleto vs Valquírias", True, BRANCO)
+        titulo_rect = titulo.get_rect(center=(LARGURA // 2, 80))
+        tela.blit(titulo, titulo_rect)
+
+        # Lista de opções com suas cores e ações associadas
+        opcoes = [
+            ("1 - Iniciar Jogo", VERDE, "iniciar"),
+            ("2 - Ajuda", VERDE, "ajuda"),
+            ("3 - Sair do Jogo", VERMELHO, "sair"),
+        ]
+
+        botoes = []  # Lista com (rect, ação)
+
+        for i, (texto, cor, acao) in enumerate(opcoes):
+            texto_render = fonte_opcao.render(texto, True, cor)
+            texto_rect = texto_render.get_rect(topleft=(50, ALTURA - 200 + i * 60))
+            tela.blit(texto_render, texto_rect)
+            botoes.append((texto_rect, acao))
 
         pygame.display.flip()
 
@@ -166,6 +179,22 @@ def menu_principal():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+
+            # CLIQUE COM O MOUSE → executa diretamente a ação
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                for rect, acao in botoes:
+                    if rect.collidepoint(mouse_x, mouse_y):
+                        if acao == "iniciar":
+                            reiniciar_jogo()
+                            return
+                        elif acao == "ajuda":
+                            tela_ajuda()
+                        elif acao == "sair":
+                            pygame.quit()
+                            sys.exit()
+
+            # TECLADO continua funcionando normalmente
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
                     reiniciar_jogo()
@@ -175,6 +204,7 @@ def menu_principal():
                 elif event.key == pygame.K_3:
                     pygame.quit()
                     sys.exit()
+
 
 
 
@@ -209,12 +239,20 @@ def desenhar_modal(textos, cor_texto=BRANCO, cor_modal=(30, 30, 30), largura=Non
 
     tela.blit(modal_surface, (pos_x, pos_y))
 
-    # Usando a fonte personalizada para desenhar o texto no modal
-    fonte = pygame.font.Font(caminho_fonte, 16)  # Usando a fonte personalizada
+    fonte = pygame.font.Font(caminho_fonte, 16)
+    texto_rects = []  # <- coletar os retângulos clicáveis
+
     for i, texto in enumerate(textos):
         linha = fonte.render(texto, True, cor_texto)
         texto_rect = linha.get_rect(center=(LARGURA // 2, pos_y + 60 + i * 45))
         tela.blit(linha, texto_rect)
+
+        # Adiciona apenas retângulos de linhas que são opções (excluindo títulos/linhas vazias)
+        if texto.strip().startswith("1") or texto.strip().startswith("2") or texto.strip().startswith("3") or texto.strip().startswith("4"):
+            texto_rects.append((texto_rect, texto.strip()[0]))  # (rect, número da opção)
+
+    return texto_rects  # <- retorna os retângulos das opções
+
 
 
 # ===== FUNÇÃO DE HISTÓRIA POR FASE COM FUNDO REAL DO JOGO =====
@@ -296,46 +334,6 @@ def tocar_som_ambiente():
     elif fase == 3:
         som_ambiente_fase3.play(loops=-1)
 
-# ===== FUNÇÃO DO MENU PRINCIPAL =====
-def menu_principal():
-    # Caminho da fonte personalizada
-    caminho_fonte = os.path.join('assets', 'PressStart2P.ttf')
-
-    while True:
-        tela.blit(fundo_menu, (0, 0))
-
-        # Adicionar o título "Esqueleto vs Valquírias" no topo da tela com a fonte personalizada
-        fonte_titulo = pygame.font.Font(caminho_fonte, 40)  # Usando a fonte personalizada
-        titulo = fonte_titulo.render("Esqueleto vs Valquírias", True, BRANCO)  # Definindo a cor do título
-        titulo_rect = titulo.get_rect(center=(LARGURA // 2, 80))  # Centraliza o título no topo
-        tela.blit(titulo, titulo_rect)  # Exibe o título na tela
-
-        # Exibir as opções do menu
-        fonte_opcao = pygame.font.Font(caminho_fonte, 30)  # Usando a fonte personalizada para as opções
-        opcao1 = fonte_opcao.render("1 - Iniciar Jogo", True, VERDE)
-        opcao2 = fonte_opcao.render("2 - Ajuda", True, VERDE)
-        opcao3 = fonte_opcao.render("3 - Sair do Jogo", True, VERMELHO)
-
-        tela.blit(opcao1, (50, ALTURA - 200))
-        tela.blit(opcao2, (50, ALTURA - 140))
-        tela.blit(opcao3, (50, ALTURA - 80))
-
-        pygame.display.flip()
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_1:
-                    reiniciar_jogo()
-                    return
-                elif event.key == pygame.K_2:
-                    tela_ajuda()
-                elif event.key == pygame.K_3:
-                    pygame.quit()
-                    sys.exit()
-
 
 def tela_ajuda():
     tela.blit(fundo_menu, (0, 0))
@@ -376,20 +374,43 @@ def menu_pausa():
         overlay.fill((0, 0, 0))
         tela.blit(overlay, (0, 0))
 
-        desenhar_modal([
+        texto_opcoes = [
             "PAUSA",
             "",
             "1 - Reiniciar Jogo",
             "2 - Voltar ao Menu Principal",
             "3 - Continuar Jogando",
             "4 - Sair do Jogo"
-        ])
+        ]
+        botoes = desenhar_modal(texto_opcoes)
+
         pygame.display.flip()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+
+            # Clique do mouse → aciona ações
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_pos = pygame.mouse.get_pos()
+                for rect, opcao in botoes:
+                    if rect.collidepoint(mouse_pos):
+                        if opcao == "1":
+                            reiniciar_jogo()
+                            pausado = False
+                        elif opcao == "2":
+                            menu_principal()
+                            reiniciar_jogo()
+                            pausado = False
+                        elif opcao == "3":
+                            pygame.mixer.music.unpause()
+                            pausado = False
+                        elif opcao == "4":
+                            pygame.quit()
+                            sys.exit()
+
+            # Teclado ainda funcionando
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
                     reiniciar_jogo()
@@ -408,6 +429,7 @@ def menu_pausa():
                     pygame.mixer.music.unpause()
                     pausado = False
 
+
 def tela_game_over():
     while True:
         tela.blit(fundo_menu, (0, 0))
@@ -416,30 +438,51 @@ def tela_game_over():
         overlay.fill((0, 0, 0))
         tela.blit(overlay, (0, 0))
 
-        desenhar_modal([
+        texto_opcoes = [
             "GAME OVER",
             "",
             "1 - Tentar Novamente",
             "2 - Voltar ao Menu Principal",
             "3 - Sair do Jogo"
-        ], cor_texto=VERMELHO)
+        ]
+        botoes = desenhar_modal(texto_opcoes, cor_texto=VERMELHO)
+
         pygame.display.flip()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+
+            # Clique do mouse → aciona ações
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_pos = pygame.mouse.get_pos()
+                for rect, opcao in botoes:
+                    if rect.collidepoint(mouse_pos):
+                        if opcao == "1":
+                            reiniciar_jogo()
+                            return
+                        elif opcao == "2":
+                            menu_principal()
+                            reiniciar_jogo()
+                            return
+                        elif opcao == "3":
+                            pygame.quit()
+                            sys.exit()
+
+            # Teclado
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
-                    reiniciar_jogo()  # Tenta reiniciar o jogo
+                    reiniciar_jogo()
                     return
                 elif event.key == pygame.K_2:
-                    menu_principal()  # Vai para o menu principal
-                    reiniciar_jogo()  # Reinicia o jogo após voltar ao menu
+                    menu_principal()
+                    reiniciar_jogo()
                     return
                 elif event.key == pygame.K_3:
                     pygame.quit()
                     sys.exit()
+
 
 # ===== CLASSE JOGADOR =====
 class Jogador(pygame.sprite.Sprite):
@@ -860,37 +903,40 @@ class InimigoBoss(pygame.sprite.Sprite):
 # ===== TELA DE FIM DO JOGO =====
 def tela_fim_jogo():
     while True:
-        tela.fill(PRETO)  # Preencher fundo com cor preta
+        tela.fill(PRETO)  # Fundo preto
 
         # Texto de vitória
-        fonte = pygame.font.Font(caminho_fonte,30)  # Usando a fonte personalizada
+        fonte = pygame.font.Font(caminho_fonte, 30)
         texto = fonte.render('Parabéns! Você chegou ao fim do jogo!', True, VERDE)
-        
-        # Centralizando o texto no centro da tela
         texto_rect = texto.get_rect(center=(LARGURA // 2, ALTURA // 2 - 50))
         tela.blit(texto, texto_rect)
 
         # Opção de sair do jogo
-        fonte_opcao = pygame.font.Font(caminho_fonte, 30)  # Usando a fonte personalizada
-        opcao1 = fonte_opcao.render("1 - Sair do Jogo", True, VERMELHO)
-        
-        # Centralizando a opção no centro inferior da tela
-        opcao1_rect = opcao1.get_rect(center=(LARGURA // 2, ALTURA // 2 + 100))
-        tela.blit(opcao1, opcao1_rect)
+        fonte_opcao = pygame.font.Font(caminho_fonte, 30)
+        opcao_texto = "1 - Sair do Jogo"
+        opcao_render = fonte_opcao.render(opcao_texto, True, VERMELHO)
+        opcao_rect = opcao_render.get_rect(center=(LARGURA // 2, ALTURA // 2 + 100))
+        tela.blit(opcao_render, opcao_rect)
 
         pygame.display.flip()
 
-        # Espera pela interação do jogador
-        esperando = True
-        while esperando:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            # Clique do mouse → aciona a saída
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_pos = pygame.mouse.get_pos()
+                if opcao_rect.collidepoint(mouse_pos):
                     pygame.quit()
                     sys.exit()
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_1:
-                        pygame.quit()  # Sai do jogo
-                        sys.exit()
+
+            # Teclado ainda funcionando
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    pygame.quit()
+                    sys.exit()
 
 
 
